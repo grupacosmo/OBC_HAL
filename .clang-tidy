@@ -1,0 +1,18 @@
+Checks: '
+-*,
+bugprone-*,
+cert-*,
+cppcoreguidelines-*,
+-cppcoreguidelines-avoid-magic-numbers,
+modernize-*,
+-modernize-use-nodiscard,
+-modernize-use-trailing-return-type,
+readability-*,
+-readability-uppercase-literal-suffix,
+-readability-magic-numbers,
+-readability-qualified-auto,
+clang-analyzer-*,
+performance-*,
+hicpp-*,
+-hicpp-uppercase-literal-suffix
+'
