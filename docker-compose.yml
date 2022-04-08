@@ -1,0 +1,9 @@
+services:
+  obc2:
+    container_name: obc2
+    build:
+      context: .
+    volumes:
+      - .:/home/OBC2
+    stdin_open: true
+    tty: true
