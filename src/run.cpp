@@ -1,8 +1,5 @@
 #include "run.hpp"
 
-void run(HardwareHandles handles)
-{
-    while (true) {
-        
-    }
+void run(HardwareHandles handles) {
+    while (true) {}
 }
