@@ -8,7 +8,9 @@ extern "C" {
 #endif
 
 struct HardwareHandles {
-    UART_HandleTypeDef* uart_handle;
+    UART_HandleTypeDef* uart;
+    GPIO_TypeDef* led_gpio_port;
+    uint16_t led_pin;
 };
 
 void run(struct HardwareHandles handles);

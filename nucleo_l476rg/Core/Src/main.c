@@ -90,7 +90,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   struct HardwareHandles handles;
-  handles.uart_handle = &huart2;
+  handles.uart = &huart2;
+  handles.led_gpio_port = GPIOA;
+  handles.led_pin = GPIO_PIN_5;
 
   /* USER CODE END 2 */
 
