@@ -2,6 +2,19 @@ cmake_minimum_required(VERSION 3.16)
 
 project(OBC2 C CXX ASM)
 
+set(CMAKE_CXX_STANDARD 17)
+set(COMMON_FLAGS
+    -mcpu=cortex-m4
+    -mthumb
+    -mfloat-abi=hard
+    -mfpu=fpv4-sp-d16
+)
+
+add_compile_options(${COMMON_FLAGS})
+add_link_options(${COMMON_FLAGS})
+
+add_subdirectory(lib)
+
 set(HAL_DIR nucleo_l476rg/Drivers/STM32L4xx_HAL_Driver)
 set(CMSIS_DIR nucleo_l476rg/Drivers/CMSIS)
 set(CORE_DIR nucleo_l476rg/Core)
@@ -30,10 +43,6 @@ target_include_directories(
 target_compile_options(
     ${PROJECT_NAME}
     PRIVATE
-        -mcpu=cortex-m4
-        -mthumb
-        -mfloat-abi=hard
-        -mfpu=fpv4-sp-d16
         -fdata-sections
         -ffunction-sections
         $<$<CONFIG:Debug>:-g -gdwarf-2 -Og, -O2 -DNDEBUG>
@@ -42,15 +51,11 @@ target_compile_options(
 target_link_options(
     ${PROJECT_NAME}
     PRIVATE
-        -mcpu=cortex-m4
-        -mthumb
-        -mfloat-abi=hard
-        -mfpu=fpv4-sp-d16
-        -specs=nano.specs
+        -specs=nosys.specs
         -T${CMAKE_SOURCE_DIR}/nucleo_l476rg/STM32L476RGTX_FLASH.ld
         -lc
         -lm
-        # -lnosys 
+        -lnosys 
         -Wl,-Map=${PROJECT_NAME}.map,--cref
         -Wl,--gc-sections
 )
@@ -60,4 +65,10 @@ target_compile_definitions(
     PRIVATE
         USE_HAL_DRIVER
         STM32L476xx
+)
+
+target_link_libraries(
+    ${PROJECT_NAME}
+    PRIVATE
+        ccl
 )
