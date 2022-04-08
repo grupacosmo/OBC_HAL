@@ -34,8 +34,8 @@ class SourceLocation {
     static constexpr SourceLocation current(
         const char* file = __builtin_FILE(),
         const char* function = __builtin_FUNCTION(),
-        int line = __builtin_LINE())
-    {
+        int line = __builtin_LINE()
+    ) {
         SourceLocation loc;
         loc.file_ = file;
         loc.function_ = function;
@@ -43,9 +43,17 @@ class SourceLocation {
         return loc;
     }
 
-    constexpr const char* file() const { return file_; }
-    constexpr const char* function() const { return function_; }
-    constexpr int line() const { return line_; }
+    constexpr const char* file() const {
+        return file_;
+    }
+
+    constexpr const char* function() const {
+        return function_;
+    }
+
+    constexpr int line() const {
+        return line_;
+    }
 };
 
 }  // namespace ccl

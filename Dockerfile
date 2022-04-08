@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && apt-get install -y make cpio libncurses5 wget curl xz-utils git cmake doxygen
+RUN apt-get update && apt-get install -y make cpio libncurses5 wget curl xz-utils git cmake doxygen python
 
 WORKDIR /home
 

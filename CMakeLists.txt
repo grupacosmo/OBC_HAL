@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(OBC2 C CXX ASM)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(COMMON_FLAGS
     -mcpu=cortex-m4
@@ -45,14 +46,14 @@ target_compile_options(
     PRIVATE
         -fdata-sections
         -ffunction-sections
-        $<$<CONFIG:Debug>:-g -gdwarf-2 -Og, -O2 -DNDEBUG>
+        $<IF:$<CONFIG:Debug>,-g -gdwarf-2 -Og, -O2 -DNDEBUG>
 )
 
 target_link_options(
     ${PROJECT_NAME}
     PRIVATE
         -specs=nosys.specs
-        -T${CMAKE_SOURCE_DIR}/nucleo_l476rg/STM32L476RGTX_FLASH.ld
+        -T${CMAKE_SOURCE_DIR}/nucleo_l476rg/STM32L476RGTx_FLASH.ld
         -lc
         -lm
         -lnosys 
