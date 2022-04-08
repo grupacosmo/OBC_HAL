@@ -1,11 +1,17 @@
 #ifndef OBC_RUN_HPP
 #define OBC_RUN_HPP
 
+#include "stm32l4xx_hal.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void run();
+struct HardwareHandles {
+    UART_HandleTypeDef* uart_handle;
+};
+
+void run(struct HardwareHandles handles);
 
 #ifdef __cplusplus
 }

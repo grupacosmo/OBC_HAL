@@ -1,6 +1,6 @@
 #include "run.hpp"
 
-void run()
+void run(HardwareHandles handles)
 {
     while (true) {
         
