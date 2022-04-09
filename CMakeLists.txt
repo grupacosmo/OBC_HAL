@@ -10,66 +10,58 @@ set(COMMON_FLAGS
     -mfloat-abi=hard
     -mfpu=fpv4-sp-d16
 )
-
-add_compile_options(${COMMON_FLAGS})
-add_link_options(${COMMON_FLAGS})
-
-add_subdirectory(lib)
+set(COMPILE_FLAGS ${COMMON_FLAGS} -fdata-sections -ffunction-sections)
+set(DEBUG_FLAGS "-g;-gdwarf-2;-Og")
+set(RELEASE_FLAGS "-O2;-DNDEBUG")
+set(LINK_FLAGS
+    ${COMMON_FLAGS}
+    -specs=nosys.specs
+    -T${CMAKE_SOURCE_DIR}/nucleo_l476rg/STM32L476RGTx_FLASH.ld
+    -lc
+    -lm
+    -lnosys 
+    -Wl,-Map=${PROJECT_NAME}.map,--cref
+    -Wl,--gc-sections
+)
+set(DEFINITIONS -DUSE_HAL_DRIVER -DSTM32L476xx)
 
 set(HAL_DIR nucleo_l476rg/Drivers/STM32L4xx_HAL_Driver)
 set(CMSIS_DIR nucleo_l476rg/Drivers/CMSIS)
 set(CORE_DIR nucleo_l476rg/Core)
 
+include_directories(
+    ${HAL_DIR}/Inc
+    ${CMSIS_DIR}/Include
+    ${CMSIS_DIR}/Device/ST/STM32L4xx/Include
+    ${CORE_DIR}/Inc
+)
+
+add_compile_options(${COMPILE_FLAGS})
+
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+    add_compile_options(${DEBUG_FLAGS})
+else ()
+    add_compile_options(${RELEASE_FLAGS})
+endif ()
+
+add_link_options(${LINK_FLAGS})
+add_definitions(${DEFINITIONS})
+
+add_subdirectory(lib)
+add_subdirectory(src)
+
 aux_source_directory(${HAL_DIR}/Src/ HAL_SRC)
 aux_source_directory(${CORE_DIR}/Src/ CORE_SRC)
 
 add_executable(
-    ${PROJECT_NAME}
+    nucleo_l476rg
         ${HAL_SRC}
         ${CORE_SRC}
         nucleo_l476rg/startup_stm32l476xx.s
-        src/run.cpp
-)
-
-target_include_directories(
-    ${PROJECT_NAME}
-    PRIVATE
-        ${HAL_DIR}/Inc
-        ${CMSIS_DIR}/Include
-        ${CMSIS_DIR}/Device/ST/STM32L4xx/Include
-        ${CORE_DIR}/Inc
-        src
-)
-
-target_compile_options(
-    ${PROJECT_NAME}
-    PRIVATE
-        -fdata-sections
-        -ffunction-sections
-        $<IF:$<CONFIG:Debug>,-g -gdwarf-2 -Og, -O2 -DNDEBUG>
-)
-
-target_link_options(
-    ${PROJECT_NAME}
-    PRIVATE
-        -specs=nosys.specs
-        -T${CMAKE_SOURCE_DIR}/nucleo_l476rg/STM32L476RGTx_FLASH.ld
-        -lc
-        -lm
-        -lnosys 
-        -Wl,-Map=${PROJECT_NAME}.map,--cref
-        -Wl,--gc-sections
-)
-        
-target_compile_definitions(
-    ${PROJECT_NAME}
-    PRIVATE
-        USE_HAL_DRIVER
-        STM32L476xx
 )
 
 target_link_libraries(
-    ${PROJECT_NAME}
+    nucleo_l476rg
     PRIVATE
-        ccl
+        obc2_lib
 )
