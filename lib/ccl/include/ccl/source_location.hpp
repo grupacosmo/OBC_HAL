@@ -56,6 +56,10 @@ class SourceLocation {
     }
 };
 
+namespace prelude {
+using ccl::SourceLocation;
+}
+
 }  // namespace ccl
 
 #endif

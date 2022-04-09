@@ -8,4 +8,4 @@ add_library(
 
 target_include_directories(${LIB_NAME} PUBLIC include)
 
-target_compile_options(${LIB_NAME} PUBLIC -fconcepts)
+target_compile_options(${LIB_NAME} PUBLIC)

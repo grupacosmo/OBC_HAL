@@ -183,50 +183,49 @@ class [[nodiscard]] Result : detail::ResultBase<T, E> {
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
     Result(Err<E>&& err) : Base{std::move(err)} {}
 
-    Result(const Result& other) requires is_trivial_copy_constructor = default;
+    // Result(const Result& other) requires is_trivial_copy_constructor = default;
 
     Result(const Result& other)
-        requires
-            !is_trivial_copy_constructor
-            && std::is_copy_constructible_v<Ok<T>>
-            && std::is_copy_constructible_v<Err<E>>
+        // requires
+        //     !is_trivial_copy_constructor
+        //     && std::is_copy_constructible_v<Ok<T>>
+        //     && std::is_copy_constructible_v<Err<E>>
     {
         construct(other);
     }
 
-    Result(Result&& other) noexcept requires is_trivial_move_constructor
-        = default;
+    // Result(Result&& other) noexcept requires is_trivial_move_constructor = default;
 
     Result(Result&& other) noexcept
-        requires
-            !is_trivial_move_constructor
-            && std::is_move_constructible_v<Ok<T>>
-            && std::is_move_constructible_v<Err<E>>
+        // requires
+        //     !is_trivial_move_constructor
+        //     && std::is_move_constructible_v<Ok<T>>
+        //     && std::is_move_constructible_v<Err<E>>
     {
         construct(std::move(other));
     }
 
-    Result& operator=(const Result& other)
-        requires is_trivial_copy_assignment = default;
+    // Result& operator=(const Result& other)
+    //     requires is_trivial_copy_assignment = default;
 
     Result& operator=(const Result& other)
-        requires
-            !is_trivial_copy_assignment
-            && std::is_copy_assignable_v<Ok<T>>
-            && std::is_copy_assignable_v<Err<E>>
+        // requires
+        //     !is_trivial_copy_assignment
+        //     && std::is_copy_assignable_v<Ok<T>>
+        //     && std::is_copy_assignable_v<Err<E>>
     {
         assign(other);
         return *this;
     }
 
-    Result& operator=(Result&& other) noexcept
-        requires is_trivial_move_assignment = default;
+    // Result& operator=(Result&& other) noexcept
+    //     requires is_trivial_move_assignment = default;
 
     Result& operator=(Result&& other) noexcept
-        requires
-            !is_trivial_move_assignment
-            && std::is_move_assignable_v<Ok<T>>
-            && std::is_move_assignable_v<Err<E>>
+        // requires
+        //     !is_trivial_move_assignment
+        //     && std::is_move_assignable_v<Ok<T>>
+        //     && std::is_move_assignable_v<Err<E>>
     {
         assign(std::move(other));
         return *this;
@@ -376,6 +375,14 @@ class [[nodiscard]] Result : detail::ResultBase<T, E> {
         return std::forward<Self>(self).ok.value;
     }
 };
+
+namespace prelude {
+
+using ccl::Err;
+using ccl::Ok;
+using ccl::Result;
+
+}  // namespace prelude
 
 }  // namespace ccl
 
