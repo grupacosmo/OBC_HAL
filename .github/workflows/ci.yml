@@ -24,14 +24,14 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/obc2:latest
   ci:
     needs: docker
     runs-on: ubuntu-latest
     container: 
       image: wiktorwieclaw/obc2
-      options: -v ${{ github.workspace }}:/home/OBC2
+      options: -v ${{ github.workspace }}:/var/OBC2
     steps:
     - uses: actions/checkout@v3
     - name: Build project

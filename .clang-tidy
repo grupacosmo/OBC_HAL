@@ -1,6 +1,9 @@
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*\.hpp'
 Checks: '
 -*,
 bugprone-*,
+-bugprone-easily-swappable-parameters,
 cert-*,
 clang-analyzer-*,
 clang-diagnostic-*,
@@ -14,8 +17,8 @@ readability-*,
 -readability-uppercase-literal-suffix,
 -readability-magic-numbers,
 -readability-qualified-auto,
+-readability-identifier-length,
 performance-*,
 hicpp-*,
 -hicpp-uppercase-literal-suffix
 '
-WarningsAsErrors: '*'

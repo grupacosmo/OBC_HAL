@@ -18,3 +18,10 @@ AlignOperands: Align
 SeparateDefinitionBlocks: Always
 Cpp11BracedListStyle: false
 SpaceBeforeCpp11BracedList: true
+BreakBeforeTernaryOperators: true
+AlwaysBreakBeforeMultilineStrings: true
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterColon
+PackConstructorInitializers: CurrentLine
+PointerAlignment: Left
+ReferenceAlignment: Left

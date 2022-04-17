@@ -28,8 +28,8 @@
 /// ```
 ///
 /// ```
-/// Result<File, ErrorKind> open_file(const char* path);
-/// Result<File, ErrorKind> create_file(const char* path);
+/// Result<File, ErrorKind> open_file(std::string_view path);
+/// Result<File, ErrorKind> create_file(std::string_view path);
 ///
 /// File file = open_file(path).unwrap_or_else([&](ErrorKind kind) {
 ///     switch (kind) {
@@ -53,91 +53,175 @@ namespace ccl {
 
 struct Unit {};
 
-namespace detail {
-
 template <typename T>
-struct Singleton {
-    static_assert(!std::is_void_v<T>, "use 'Unit' instead of 'void'");
-    T value;
+class Ok {
+    T value_;
+
+   public:
+    constexpr explicit Ok(const T& t) : value_ { t } {}
+
+    constexpr explicit Ok(T&& t) : value_ { std::move(t) } {}
+
+    constexpr T& value() & {
+        return value_;
+    }
+
+    constexpr const T& value() const& {
+        return value_;
+    }
+
+    constexpr T&& value() && {
+        return std::move(value_);
+    }
+
+    constexpr const T&& value() const&& {
+        return std::move(value_);
+    }
 };
 
-}  // namespace detail
-
-template <typename T>
-struct Ok : detail::Singleton<T> {};
-
-template <typename T>
-Ok(T) -> Ok<T>;
-
 template <typename E>
-struct Err : detail::Singleton<E> {};
+class Err {
+    E value_;
 
-template <typename E>
-Err(E) -> Err<E>;
+   public:
+    constexpr explicit Err(const E& e) : value_ { e } {}
+
+    constexpr explicit Err(E&& e) : value_ { std::move(e) } {}
+
+    constexpr E& value() & {
+        return value_;
+    }
+
+    constexpr const E& value() const& {
+        return value_;
+    }
+
+    constexpr E&& value() && {
+        return std::move(value_);
+    }
+
+    constexpr const E&& value() const&& {
+        return std::move(value_);
+    }
+};
 
 namespace detail {
 
-// compiler crashed when I tried to overload destructors with 'requires'
-// so here we are with ugly tricks
+// clang-format off
+
+template <typename T>
+inline constexpr bool has_trivial_copy_move_destruct =
+    std::is_trivially_copy_constructible_v<T>
+    && std::is_trivially_copy_assignable_v<T>
+    && std::is_trivially_move_constructible_v<T>
+    && std::is_trivially_move_assignable_v<T>
+    && std::is_trivially_destructible_v<T>;
+
+// clang-format on
+
 template <
     typename T,
     typename E,
-    bool = std::is_trivially_destructible_v<T>&&
-        std::is_trivially_destructible_v<E>>
+    bool =
+        has_trivial_copy_move_destruct<T>&& has_trivial_copy_move_destruct<E>>
 struct ResultBase {
     union {
-        Ok<T> ok;
-        Err<E> err;
+        T ok;
+        E err;
     };
 
     bool is_ok_;
 
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    ResultBase(Ok<T>&& ok) : ok { std::move(ok) }, is_ok_ { true } {}
+    ResultBase(Ok<T>&& ok) : ok { std::move(ok).value() }, is_ok_ { true } {}
 
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    ResultBase(Err<E>&& err) : err { std::move(err) }, is_ok_ { false } {}
-
-    ResultBase(const ResultBase&) = default;
-    ResultBase& operator=(const ResultBase&) = default;
-
-    ResultBase(ResultBase&&) noexcept = default;
-    ResultBase& operator=(ResultBase&&) noexcept = default;
-
-    ~ResultBase() = default;
+    ResultBase(Err<E>&& err) :
+        err { std::move(err).value() },
+        is_ok_ { false } {}
 };
 
 template <typename T, typename E>
 struct ResultBase<T, E, false> {
     union {
-        Ok<T> ok;
-        Err<E> err;
+        T ok;
+        E err;
     };
 
     bool is_ok_;
 
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    ResultBase(Ok<T>&& ok) : ok { std::move(ok) }, is_ok_ { true } {}
+    ResultBase(Ok<T>&& ok) : ok { std::move(ok).value() }, is_ok_ { true } {}
 
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    ResultBase(Err<E>&& err) : err { std::move(err) }, is_ok_ { false } {}
+    // NOLINTNEXTLINE(*-explicit-conversions)
+    ResultBase(Err<E>&& err) :
+        err { std::move(err).value() },
+        is_ok_ { false } {}
 
-    ResultBase(const ResultBase&) = delete;
-    ResultBase& operator=(const ResultBase&) = delete;
+    // NOLINTNEXTLINE(*-member-init)
+    ResultBase(const ResultBase& other) {
+        construct(other);
+    }
 
-    ResultBase(ResultBase&&) noexcept = delete;
-    ResultBase& operator=(ResultBase&&) noexcept = delete;
+    // NOLINTNEXTLINE(*-member-init)
+    ResultBase(ResultBase&& other) noexcept {
+        construct(std::move(other));
+    }
+
+    // NOLINTNEXTLINE(cert-oop54-cpp)
+    ResultBase& operator=(const ResultBase& other) {
+        assign(other);
+        return *this;
+    }
+
+    ResultBase& operator=(ResultBase&& other) noexcept {
+        assign(std::move(other));
+        return *this;
+    }
 
     ~ResultBase() {
         if (is_ok_) {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
             if constexpr (!std::is_trivially_destructible_v<T>) {
-                ok.~Ok();
+                ok.~T();  // NOLINT (*-union-access)
             }
         } else {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
             if constexpr (!std::is_trivially_destructible_v<E>) {
-                err.~Err();
+                err.~E();  // NOLINT (*-union-access)
+            }
+        }
+    };
+
+    template <typename R>
+    void construct(R&& other) {
+        this->is_ok_ = other.is_ok_;
+        if (this->is_ok_) {
+            new (&this->ok) auto(std::forward<R>(other).ok);
+        } else {
+            new (&this->err) auto(std::forward<R>(other).err);
+        }
+    }
+
+    template <typename R>
+    void assign(R&& other) {
+        if (other.is_ok_) {
+            if (this->is_ok_) {
+                this->ok = std::forward<R>(other).ok;
+            } else {
+                if constexpr (!std::is_trivially_destructible_v<E>) {
+                    this->err.~E();
+                }
+                new (&this->ok) auto(std::forward<R>(other).ok);
+                this->is_ok_ = true;
+            }
+        } else {
+            if (this->is_ok_) {
+                if constexpr (!std::is_trivially_destructible_v<T>) {
+                    this->ok.~T();
+                }
+                new (&this->err) auto(std::forward<R>(other).err);
+                this->is_ok_ = false;
+            } else {
+                this->err = std::forward<R>(other).err;
             }
         }
     }
@@ -146,94 +230,15 @@ struct ResultBase<T, E, false> {
 }  // namespace detail
 
 template <typename T, typename E>
-// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 class [[nodiscard]] Result : detail::ResultBase<T, E> {
     using Base = detail::ResultBase<T, E>;
 
-    // clang-format off
-
-    static constexpr bool is_trivial_copy_constructor =
-        std::is_trivially_copy_constructible_v<Ok<T>>
-        && std::is_trivially_copy_constructible_v<Err<E>>;
-
-    static constexpr bool is_trivial_move_constructor =
-        std::is_trivially_move_constructible_v<Ok<T>>
-        && std::is_trivially_move_constructible_v<Err<E>>;
-
-    static constexpr bool is_trivial_copy_assignment = 
-        std::is_trivially_copy_assignable_v<Ok<T>>
-        && std::is_trivially_copy_constructible_v<Ok<T>>
-        && std::is_trivially_destructible_v<Ok<T>>
-        && std::is_trivially_copy_assignable_v<Err<E>>
-        && std::is_trivially_copy_constructible_v<Err<E>>
-        && std::is_trivially_destructible_v<Err<E>>;
-
-    static constexpr bool is_trivial_move_assignment = 
-        std::is_trivially_move_assignable_v<Ok<T>>
-        && std::is_trivially_move_constructible_v<Ok<T>>
-        && std::is_trivially_destructible_v<Ok<T>>
-        && std::is_trivially_move_assignable_v<Err<E>>
-        && std::is_trivially_move_constructible_v<Err<E>>
-        && std::is_trivially_destructible_v<Err<E>>;
-
    public:
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    Result(Ok<T>&& ok) : Base{std::move(ok)} {}
+    // NOLINTNEXTLINE(*-explicit-conversions)
+    Result(Ok<T>&& ok) : Base { std::move(ok) } {}
 
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    Result(Err<E>&& err) : Base{std::move(err)} {}
-
-    // Result(const Result& other) requires is_trivial_copy_constructor = default;
-
-    Result(const Result& other)
-        // requires
-        //     !is_trivial_copy_constructor
-        //     && std::is_copy_constructible_v<Ok<T>>
-        //     && std::is_copy_constructible_v<Err<E>>
-    {
-        construct(other);
-    }
-
-    // Result(Result&& other) noexcept requires is_trivial_move_constructor = default;
-
-    Result(Result&& other) noexcept
-        // requires
-        //     !is_trivial_move_constructor
-        //     && std::is_move_constructible_v<Ok<T>>
-        //     && std::is_move_constructible_v<Err<E>>
-    {
-        construct(std::move(other));
-    }
-
-    // Result& operator=(const Result& other)
-    //     requires is_trivial_copy_assignment = default;
-
-    Result& operator=(const Result& other)
-        // requires
-        //     !is_trivial_copy_assignment
-        //     && std::is_copy_assignable_v<Ok<T>>
-        //     && std::is_copy_assignable_v<Err<E>>
-    {
-        assign(other);
-        return *this;
-    }
-
-    // Result& operator=(Result&& other) noexcept
-    //     requires is_trivial_move_assignment = default;
-
-    Result& operator=(Result&& other) noexcept
-        // requires
-        //     !is_trivial_move_assignment
-        //     && std::is_move_assignable_v<Ok<T>>
-        //     && std::is_move_assignable_v<Err<E>>
-    {
-        assign(std::move(other));
-        return *this;
-    }
-
-    // clang-format on
-
-    ~Result() = default;
+    // NOLINTNEXTLINE(*-explicit-conversions)
+    Result(Err<E>&& err) : Base { std::move(err) } {}
 
     bool is_ok() const {
         return this->is_ok_;
@@ -285,72 +290,29 @@ class [[nodiscard]] Result : detail::ResultBase<T, E> {
         return unwrap_or_else_impl(std::move(*this), f);
     }
 
-    T& expect(const char* msg) & {
+    T& expect(std::string_view msg) & {
         return expect_impl(*this, msg);
     }
 
-    T&& expect(const char* msg) && {
+    T&& expect(std::string_view msg) && {
         return expect_impl(std::move(*this), msg);
     }
 
-    const T& expect(const char* msg) const& {
+    const T& expect(std::string_view msg) const& {
         return expect_impl(*this, msg);
     }
 
-    const T&& expect(const char* msg) const&& {
+    const T&& expect(std::string_view msg) const&& {
         return expect_impl(std::move(*this), msg);
     }
 
    private:
-    void destroy_ok() {
-        if constexpr (!std::is_trivially_destructible_v<Ok<T>>) {
-            this->ok.~Ok();
-        }
-    }
-
-    void destroy_err() {
-        if constexpr (!std::is_trivially_destructible_v<Err<E>>) {
-            this->err.~Err();
-        }
-    }
-
-    template <typename R>
-    void construct(R&& other) {
-        this->is_ok_ = other.is_ok_;
-        if (this->is_ok_) {
-            new (&this->ok) auto(std::forward<R>(other).ok);
-        } else {
-            new (&this->err) auto(std::forward<R>(other).err);
-        }
-    }
-
-    template <typename R>
-    void assign(R&& other) {
-        if (other.is_ok_) {
-            if (this->is_ok_) {
-                this->ok = std::forward<R>(other).ok;
-            } else {
-                destroy_err();
-                new (&this->ok) auto(std::forward<R>(other).ok);
-                this->is_ok_ = true;
-            }
-        } else {
-            if (this->is_ok_) {
-                destroy_ok();
-                new (&this->err) auto(std::forward<R>(other).err);
-                this->is_ok_ = false;
-            } else {
-                this->err = std::forward<R>(other).err;
-            }
-        }
-    }
-
     template <typename Self>
     static auto&& unwrap_impl(Self&& self) {
         if (CCL_UNLIKELY(self.is_err())) {
             panic("unwrap");
         }
-        return std::forward<Self>(self).ok.value;
+        return std::forward<Self>(self).ok;  // NOLINT (*-union-access)
     }
 
     template <typename Self>
@@ -358,21 +320,21 @@ class [[nodiscard]] Result : detail::ResultBase<T, E> {
         if (CCL_UNLIKELY(self.is_ok())) {
             panic("unwrap_err");
         }
-        return std::forward<Self>(self).err.value;
+        return std::forward<Self>(self).err;
     }
 
     template <typename Self, typename F>
     static T unwrap_or_else_impl(Self&& self, F f) {
-        return self.is_ok() ? std::forward<Self>(self).ok.value
-                            : f(std::forward<Self>(self).err.value);
+        return self.is_ok() ? std::forward<Self>(self).ok
+                            : f(std::forward<Self>(self).err);
     }
 
     template <typename Self>
-    static auto&& expect_impl(Self&& self, const char* msg) {
-        if (ccl_UNLIKELY(self.is_err())) {
+    static auto&& expect_impl(Self&& self, std::string_view msg) {
+        if (CCL_UNLIKELY(self.is_err())) {
             panic(msg);
         }
-        return std::forward<Self>(self).ok.value;
+        return std::forward<Self>(self).ok;
     }
 };
 
