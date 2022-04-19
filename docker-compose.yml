@@ -1,9 +1,11 @@
 services:
   obc2:
     container_name: obc2
+    image: wiktorwieclaw/obc2
+    user: ${UID}:${GID}
     build:
       context: .
     volumes:
-      - .:/home/OBC2
+      - .:/var/OBC2
     stdin_open: true
     tty: true
